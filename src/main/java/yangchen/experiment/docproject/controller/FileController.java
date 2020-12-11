@@ -23,7 +23,7 @@ public class FileController {
     @PostMapping("/uploadFile")
     public String processFile(@RequestParam("file")MultipartFile file, RedirectAttributes ra) throws Exception {
 
-        //fileService.processFile(file);
+        fileService.processFile(file);
 
 
         return "redirect:/";
