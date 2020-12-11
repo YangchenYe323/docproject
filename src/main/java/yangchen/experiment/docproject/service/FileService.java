@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.w3c.dom.Document;
 import org.zwobble.mammoth.DocumentConverter;
 import org.zwobble.mammoth.Result;
+import yangchen.experiment.docproject.conversion.PdfToHtml;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
@@ -24,25 +25,26 @@ import java.nio.file.Paths;
 @Service
 public class FileService {
 
+    private String outputFileName = null;
+
 
     public void processFile(MultipartFile file) throws Exception {
+
+        outputFileName = getName(file.getOriginalFilename());
 
         String extension = getExtension(file.getOriginalFilename());
 
         System.out.println(Paths.get("").toAbsolutePath().toString());
 
-        //handles pdf file
+        //generate File object from Multipart File
         File f = new File("src/main/resources/target.tmp");
 
         OutputStream os = new FileOutputStream(f);
         os.write(file.getBytes());
 
         if (extension.equals("pdf")) {
-
             PDDocument document = PDDocument.load(f);
-            Writer output = new PrintWriter("src/output/out.html", "utf-8");
-            new PDFDomTree().writeText(document, output);
-            output.close();
+            PdfToHtml.getText(document, 1, Integer.MAX_VALUE, "src/output/" + outputFileName + ".html");
         }
         else if(extension.equals("docx")){
 
@@ -71,6 +73,12 @@ public class FileService {
 
 
         }
+
+    }
+
+    private String getName(String name) {
+
+        return name.substring(0, name.lastIndexOf('.'));
 
     }
 
