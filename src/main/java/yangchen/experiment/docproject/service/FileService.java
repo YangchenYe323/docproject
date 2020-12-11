@@ -1,5 +1,6 @@
 package yangchen.experiment.docproject.service;
 
+import com.aspose.words.SaveFormat;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.converter.WordToHtmlConverter;
@@ -8,6 +9,8 @@ import org.fit.pdfdom.PDFDomTree;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.w3c.dom.Document;
+import org.zwobble.mammoth.DocumentConverter;
+import org.zwobble.mammoth.Result;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
@@ -42,9 +45,9 @@ public class FileService {
             output.close();
         }
         else if(extension.equals("docx")){
-            XWPFDocument document = new XWPFDocument(new FileInputStream(f));
-            OutputStream out = new FileOutputStream(new File("src/output/wordout.html"));
-            
+
+            com.aspose.words.Document doc = new com.aspose.words.Document(new FileInputStream(f));
+            doc.save("src/output/docxout.html", SaveFormat.HTML);
 
         }
         else if (extension.equals("doc")){
@@ -55,7 +58,7 @@ public class FileService {
             converter.processDocument(document);
 
             Document html = converter.getDocument();
-            OutputStream out = new FileOutputStream("src/output/wordout.html");
+            OutputStream out = new FileOutputStream("src/output/docout.html");
             DOMSource domSource = new DOMSource(html);
             StreamResult result = new StreamResult(out);
             TransformerFactory factory = TransformerFactory.newInstance();
@@ -65,7 +68,6 @@ public class FileService {
             serializer.setOutputProperty(OutputKeys.METHOD, "html");
             serializer.transform(domSource, result);
             out.close();
-
 
 
         }
