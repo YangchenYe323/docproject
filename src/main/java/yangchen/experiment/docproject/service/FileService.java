@@ -1,98 +1,101 @@
 package yangchen.experiment.docproject.service;
 
-import com.aspose.words.SaveFormat;
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.io.RandomAccessBufferedFileInputStream;
-import org.apache.pdfbox.io.RandomAccessRead;
 
 import org.apache.pdfbox.pdfparser.PDFParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.poi.hwpf.HWPFDocument;
-import org.apache.poi.hwpf.converter.WordToHtmlConverter;
-import org.apache.poi.xwpf.converter.core.FileURIResolver;
-import org.apache.poi.xwpf.converter.xhtml.XHTMLOptions;
-import org.apache.poi.xwpf.converter.xhtml.XHTMLConverter;
+import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.fit.pdfdom.PDFDomTree;
+import org.mabb.fontverter.NotImplementedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.w3c.dom.Document;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 import java.io.*;
-import java.nio.file.Paths;
+import java.util.Map;
 
 @Service
 public class FileService {
 
-    /**
-     * Transform the input file to html and save to a local file
-     * @param file
-     * @throws Exception
-     */
-    public void processFile(MultipartFile file) throws Exception {
 
+    public FileService(){
+    }
+
+
+    public String process(Map<String, Integer> map, MultipartFile file) throws IOException {
+
+        String text = null;
         String extension = getExtension(file.getOriginalFilename());
-        String fileName = getFileName(file.getOriginalFilename());
 
-        System.out.println(Paths.get("").toAbsolutePath().toString());
-
-        //handles pdf file
         File f = new File("src/main/resources/target.tmp");
 
         OutputStream os = new FileOutputStream(f);
         os.write(file.getBytes());
 
-        if (extension.equals("pdf")) {
-
-            RandomAccessRead is = new RandomAccessBufferedFileInputStream(f);
-            PDFParser parser = new PDFParser(is);
+        if(extension.equals("pdf")){
+            PDFTextStripper stripper = null;
+            PDDocument document = null;
+            PDFParser parser = new PDFParser(new RandomAccessBufferedFileInputStream(f));
             parser.parse();
+            COSDocument cosDoc = parser.getDocument();
+            stripper = new PDFTextStripper();
+            document = new PDDocument(cosDoc);
+            stripper.setStartPage(1);
+            stripper.setEndPage(document.getNumberOfPages());
+            text = stripper.getText(document);
 
-            PDDocument document = parser.getPDDocument();
-            Writer output = new PrintWriter("src/output/" + fileName + ".html", "utf-8");
-            new PDFDomTree().writeText(document, output);
-            output.close();
-        }
-        else if(extension.equals("docx")){
+        } else if(extension.equals("docx")){
+            XWPFDocument doc = new XWPFDocument(new FileInputStream(f));
+            XWPFWordExtractor ex = new XWPFWordExtractor(doc);
 
-            InputStream in = new FileInputStream(f);
-            XWPFDocument document = new XWPFDocument(in);
-
-            XHTMLOptions options = XHTMLOptions.create().URIResolver(new FileURIResolver((new File("\"src/output/\" + fileName + \".html\""))));
-            OutputStream out = new ByteArrayOutputStream();
-
-            XHTMLConverter.getInstance().convert(document, out, options);
-
-        }
-        else if (extension.equals("doc")){
-            InputStream in = new FileInputStream(f);
-            HWPFDocument document = new HWPFDocument(in);
-
-            WordToHtmlConverter converter = new WordToHtmlConverter(DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument());
-            converter.processDocument(document);
-
-            Document html = converter.getDocument();
-            OutputStream out = new FileOutputStream("src/output/" + fileName + ".html");
-            DOMSource domSource = new DOMSource(html);
-            StreamResult result = new StreamResult(out);
-            TransformerFactory factory = TransformerFactory.newInstance();
-            Transformer serializer = factory.newTransformer();
-            serializer.setOutputProperty(OutputKeys.ENCODING, "utf-8");
-            serializer.setOutputProperty(OutputKeys.INDENT, "yes");
-            serializer.setOutputProperty(OutputKeys.METHOD, "html");
-            serializer.transform(domSource, result);
-            out.close();
-
-
+            text = ex.getText();
+        } else{
+            throw new RuntimeException("Document Type Not Supported");
         }
 
+        //scan text by chinese character
+        for (int offset = 0; offset < text.length();){
+            int codepoint = text.codePointAt(offset);
+            String ch = new String(Character.toChars(codepoint));
+
+            if (ch.equals("企")){
+                int freq = map.getOrDefault("企业", 0);
+                map.put("企业", freq+1);
+            }
+
+            if (ch.equals("人")){
+                int freq = map.getOrDefault("人才", 0);
+                map.put("人才", freq+1);
+            }
+
+            if (ch.equals("国")){
+                int freq = map.getOrDefault("国家级", 0);
+                map.put("国家级", freq+1);
+            }
+
+            if (ch.equals("省")){
+                int freq = map.getOrDefault("省/直辖市级", 0);
+                map.put("省/直辖市级", freq+1);
+            }
+
+            if (ch.equals("市")){
+                int freq = map.getOrDefault("地市级", 0);
+                map.put("地市级", freq+1);
+            }
+
+            if (ch.equals("区") || ch.equals("县")){
+                int freq = map.getOrDefault("地市级", 0);
+                map.put("地市级", freq+1);
+
+                freq = map.getOrDefault("区县级", 0);
+                map.put("区县级", freq+1);
+            }
+
+
+            offset += Character.charCount(codepoint);
+        }
+
+        return text;
     }
 
     /**
@@ -102,8 +105,6 @@ public class FileService {
      */
     public String getFileContent(MultipartFile file) throws IOException {
 
-        System.out.println("D");
-
         String extension = getExtension(file.getOriginalFilename());
 
         File f = new File("src/main/resources/target.tmp");
@@ -112,28 +113,40 @@ public class FileService {
         os.write(file.getBytes());
 
         if(extension.equals("pdf")){
-            System.out.println("E");
             PDFTextStripper stripper = null;
             PDDocument document = null;
             PDFParser parser = new PDFParser(new RandomAccessBufferedFileInputStream(f));
             parser.parse();
-            try{
-                COSDocument cosDoc = parser.getDocument();
-                stripper = new PDFTextStripper();
-                document = new PDDocument(cosDoc);
-                stripper.setStartPage(1);
-                stripper.setEndPage(document.getNumberOfPages());
-                return stripper.getText(document);
-            } catch (Exception e){
-                e.printStackTrace();
+            COSDocument cosDoc = parser.getDocument();
+            stripper = new PDFTextStripper();
+            document = new PDDocument(cosDoc);
+            stripper.setStartPage(1);
+            stripper.setEndPage(document.getNumberOfPages());
+            String text = stripper.getText(document);
+
+            //pc.setText(text);
+            //System.out.println(text);
+            for (int i = 0; i < text.codePointCount(0, text.length()); ++i){
+                String ch = new String(Character.toChars(text.codePointAt(i)));
+                System.out.println(ch);
             }
 
+            System.out.println();
+
+            return text;
+
+        } else if(extension.equals("docx")){
+            XWPFDocument doc = new XWPFDocument(new FileInputStream(f));
+            XWPFWordExtractor ex = new XWPFWordExtractor(doc);
+
+            String text = ex.getText();
+            //pc.setText(text);
+
+            return text;
+        } else{
+            //file extension not supported
+            throw new NotImplementedException();
         }
-
-        System.out.println("SSS");
-
-        return null;
-
     }
 
     private String getFileName(String originalFilename) {
@@ -146,6 +159,7 @@ public class FileService {
         int i = name.lastIndexOf('.');
         return name.substring(i+1);
     }
+
 
 
 

@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link rel="stylesheet" href="../../upload.css"
+          th:href="@{/upload.css}" type="text/css" media="all">
 </head>
 <body>
 <h1>File Upload</h1>
@@ -13,7 +15,7 @@
     <button type="submit">Submit</button>
 </form>
 
-<input type="text" th:value="${doctext}" size="100" >
 
+<textarea class="text_box" id="text_box" th:text="${doctext}" cols="100" rows="30"></textarea>
 </body>
 </html>

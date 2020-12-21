@@ -11,11 +11,14 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import yangchen.experiment.docproject.service.FileService;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Controller
 public class FileController {
 
     @Autowired
-    FileService fileService;
+    FileService fs;
 
     @GetMapping("/")
     public String index(){
@@ -30,9 +33,15 @@ public class FileController {
         ModelAndView mv = new ModelAndView();
 
 
-        mv.addObject("doctext", fileService.getFileContent(file));
-        mv.setViewName("upload");
+        Map<String, Integer> frequency = new HashMap<>();
 
+        //String text = fs.process(frequency, file);
+        String text = fs.process(frequency, file);
+
+        System.out.println(frequency);
+
+        mv.addObject("doctext", text);
+        mv.setViewName("upload");
 
         return mv;
     }
