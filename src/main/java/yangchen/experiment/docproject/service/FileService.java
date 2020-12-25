@@ -11,7 +11,12 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.mabb.fontverter.NotImplementedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import yangchen.experiment.docproject.valueobject.Policy;
+
 import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -22,9 +27,22 @@ public class FileService {
     }
 
 
-    public String process(Map<String, Integer> map, MultipartFile file) throws IOException {
+    /**
+     * extract text from the given file
+     * @param map
+     * @param file
+     * @return
+     * @throws IOException
+     */
+    public Policy process(Map<String, Integer> map, MultipartFile file) throws IOException {
 
         String text = null;
+        List<String> tags = new ArrayList<String >();
+        Map<String, Integer> subjectMap = new HashMap<>();
+        Map<String, Integer> scopeMap = new HashMap<>();
+        Map<String, Integer> classMap = new HashMap<>();
+
+
         String extension = getExtension(file.getOriginalFilename());
 
         File f = new File("src/main/resources/target.tmp");
@@ -58,44 +76,102 @@ public class FileService {
             int codepoint = text.codePointAt(offset);
             String ch = new String(Character.toChars(codepoint));
 
+
+            //适用对象
             if (ch.equals("企")){
                 int freq = map.getOrDefault("企业", 0);
-                map.put("企业", freq+1);
+                subjectMap.put("企业", freq+1);
             }
 
             if (ch.equals("人")){
                 int freq = map.getOrDefault("人才", 0);
-                map.put("人才", freq+1);
+                subjectMap.put("人才", freq+1);
             }
 
+            //政策级别
             if (ch.equals("国")){
                 int freq = map.getOrDefault("国家级", 0);
-                map.put("国家级", freq+1);
+                scopeMap.put("国家级", freq+1);
             }
 
             if (ch.equals("省")){
                 int freq = map.getOrDefault("省/直辖市级", 0);
-                map.put("省/直辖市级", freq+1);
+                scopeMap.put("省/直辖市级", freq+1);
             }
 
             if (ch.equals("市")){
                 int freq = map.getOrDefault("地市级", 0);
-                map.put("地市级", freq+1);
+                scopeMap.put("地市级", freq+1);
             }
 
             if (ch.equals("区") || ch.equals("县")){
                 int freq = map.getOrDefault("地市级", 0);
-                map.put("地市级", freq+1);
+                scopeMap.put("地市级", freq+1);
 
                 freq = map.getOrDefault("区县级", 0);
-                map.put("区县级", freq+1);
+                scopeMap.put("区县级", freq+1);
             }
 
+            //政策类型
+            if (ch.equals("产")){
+                int freq = map.getOrDefault("产业", 0);
+                classMap.put("产业", freq+1);
+            }
+
+            if (ch.equals("金")){
+                int freq = map.getOrDefault("金融", 0);
+                classMap.put("金融", freq+1);
+            }
+
+            if (ch.equals("科")){
+                int freq = map.getOrDefault("科技", 0);
+                classMap.put("科技", freq+1);
+            }
+
+            if (ch.equals("税")){
+                int freq = map.getOrDefault("税收", 0);
+                classMap.put("税收", freq+1);
+            }
+
+            if (ch.equals("专")){
+                int freq = map.getOrDefault("专利", 0);
+                classMap.put("专利", freq+1);
+            }
 
             offset += Character.charCount(codepoint);
         }
 
-        return text;
+        //Analyze the map to determine which tags to show
+        if (subjectMap.getOrDefault("企业", 0) > subjectMap.getOrDefault("人才", 0)){
+            tags.add("企业");
+        } else{
+            tags.add("人才");
+        }
+
+        String scope = (String)scopeMap.keySet().toArray() [0];
+        for (String key: scopeMap.keySet()){
+            if (scopeMap.get(key) > scopeMap.get(scope)){
+                scope = key;
+            }
+        }
+        tags.add(scope);
+
+        String policy = (String)classMap.keySet().toArray() [0];
+        for (String key: classMap.keySet()){
+            if (classMap.get(key) > classMap.get(policy)){
+                policy = key;
+            }
+        }
+        tags.add(policy);
+
+
+        //return a Policy object that contains all the information needed
+        Policy response = new Policy();
+        response.setText(text);
+        response.setTags(tags);
+
+
+        return response;
     }
 
     /**

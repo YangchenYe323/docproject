@@ -10,7 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import yangchen.experiment.docproject.service.FileService;
+import yangchen.experiment.docproject.valueobject.Policy;
 
+import javax.sound.midi.SysexMessage;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,11 +38,11 @@ public class FileController {
         Map<String, Integer> frequency = new HashMap<>();
 
         //String text = fs.process(frequency, file);
-        String text = fs.process(frequency, file);
+        Policy policy = fs.process(frequency, file);
 
-        System.out.println(frequency);
+        System.out.println(policy.getTags());
 
-        mv.addObject("doctext", text);
+        mv.addObject("doctext", policy.getText());
         mv.setViewName("upload");
 
         return mv;
